@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Snap Your Moment!</title>
+
+  <!-- 字体链接 -->
+  <link href="https://fonts.googleapis.com/css2?family=Chewy&family=Schoolbell&display=swap" rel="stylesheet">
+
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Chewy', cursive;
+      background: url('BG%20DEMO.png') no-repeat center center fixed;
+      background-size: cover;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #camera-container {
+      position: relative;
+      width: 90%;
+      max-width: 360px;
+    }
+
+    video, canvas {
+      width: 100%;
+      border-radius: 16px;
+      background: white;
+      object-fit: cover;
+      object-position: center;
+    }
+
+    #controls, #backgrounds, #frames {
+      margin-top: 10px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    button, select {
+      margin: 5px;
+      padding: 10px 15px;
+      font-size: 16px;
+      font-family: 'Chewy', cursive;
+      border-radius: 8px;
+      border: none;
+      background-color: #1e88e5;
+      color: white;
+      cursor: pointer;
+    }
+
+    #download {
+      display: none;
+      margin-top: 10px;
+    }
+
+    #loading {
+      position: fixed;
+      width: 100%;
+      height: 100%;
+      background: #f0f2f5;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 24px;
+      font-family: 'Chewy', cursive;
+      z-index: 999;
+    }
+  </style>
+</head>
+
+<body>
+
+<div id="loading">Loading...</div>
+
+<div id="camera-container" style="display:none;">
+  <video id="video" autoplay playsinline></video>
+  <canvas id="canvas" style="display:none;"></canvas>
+</div>
+
+<div id="controls" style="display:none;">
+  <button id="capture">Capture Photo</button>
+  <button id="retake" style="display:none;">Retake</button>
+</div>
+
+<div id="backgrounds" style="display:none;">
+  <select id="backgroundSelect">
+    <option value="none">Select Background</option>
+    <option value="background1.png">Background 1</option>
+    <option value="background2.png">Background 2</option>
+    <option value="background3.png">Background 3</option>
+    <option value="background4.png">Background 4</option>
+    <option value="background5.png">Background 5</option>
+    <option value="background6.png">Background 6</option>
+  </select>
+</div>
+
+<div id="frames" style="display:none;">
+  <select id="frameSelect">
+    <option value="none">Select Frame</option>
+    <option value="frame1.png">Frame 1</option>
+    <option value="frame2.png">Frame 2</option>
+    <option value="frame3.png">Frame 3</option>
+    <option value="frame4.png">Frame 4</option>
+    <option value="frame5.png">Frame 5</option>
+    <option value="frame6.png">Frame 6</option>
+  </select>
+</div>
+
+<a id="download" download="photo.png">📥 Download Photo</a>
+
+<script>
+  const video = document.getElementById('video');
+  const canvas = document.getElementById('canvas');
+  const captureButton = document.getElementById('capture');
+  const retakeButton = document.getElementById('retake');
+  const backgroundSelect = document.getElementById('backgroundSelect');
+  const frameSelect = document.getElementById('frameSelect');
+  const downloadLink = document.getElementById('download');
+  const loadingScreen = document.getElementById('loading');
+  let stream;
+  let selectedBackground = null;
+  let selectedFrame = null;
+
+  async function startCamera() {
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+      video.srcObject = stream;
+      video.onloadedmetadata = () => {
+        loadingScreen.style.display = 'none';
+        document.getElementById('camera-container').style.display = 'block';
+        document.getElementById('controls').style.display = 'flex';
+        document.getElementById('backgrounds').style.display = 'flex';
+        document.getElementById('frames').style.display = 'flex';
+      };
+    } catch (error) {
+      alert('Unable to access camera. Please check permissions.');
+      console.error(error);
+    }
+  }
+
+  startCamera();
+
+  backgroundSelect.addEventListener('change', () => {
+    selectedBackground = backgroundSelect.value;
+  });
+
+  frameSelect.addEventListener('change', () => {
+    selectedFrame = frameSelect.value;
+  });
+
+  captureButton.addEventListener('click', () => {
+    const context = canvas.getContext('2d');
+    const width = video.videoWidth;
+    const height = video.videoHeight;
+    canvas.width = width;
+    canvas.height = height;
+
+    context.drawImage(video, 0, 0, width, height);
+
+    if (selectedBackground && selectedBackground !== 'none') {
+      const bg = new Image();
+      bg.src = selectedBackground;
+      context.globalCompositeOperation = 'destination-over';
+      bg.onload = () => {
+        context.drawImage(bg, 0, 0, width, height);
+        if (selectedFrame && selectedFrame !== 'none') {
+          const frame = new Image();
+          frame.src = selectedFrame;
+          frame.onload = () => {
+            context.globalCompositeOperation = 'source-over';
+            context.drawImage(frame, 0, 0, width, height);
+            addMessage();
+          };
+        } else {
+          addMessage();
+        }
+      };
+    } else {
+      if (selectedFrame && selectedFrame !== 'none') {
+        const frame = new Image();
+        frame.src = selectedFrame;
+        frame.onload = () => {
+          context.drawImage(frame, 0, 0, width, height);
+          addMessage();
+        };
+      } else {
+        addMessage();
+      }
+    }
+
+    function addMessage() {
+      const text = prompt("Enter your name/message:");
+      if (text) {
+        context.font = "48px 'Schoolbell', cursive";
+        context.fillStyle = "white";
+        context.strokeStyle = "black";
+        context.lineWidth = 3;
+        context.textAlign = "center";
+        context.strokeText(text, width / 2, height - 60);
+        context.fillText(text, width / 2, height - 60);
+      }
+      canvas.style.display = 'block';
+      video.style.display = 'none';
+      captureButton.style.display = 'none';
+      retakeButton.style.display = 'inline-block';
+      downloadLink.href = canvas.toDataURL('image/png');
+      downloadLink.style.display = 'inline-block';
+    }
+  });
+
+  retakeButton.addEventListener('click', () => {
+    location.reload();
+  });
+</script>
+
+</body>
+</html>
